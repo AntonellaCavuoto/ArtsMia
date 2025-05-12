@@ -1,3 +1,5 @@
+import copy
+
 import networkx as nx
 
 from database.DAO import DAO
@@ -10,6 +12,46 @@ class Model:
         self._idMap = {}
         for v in self._nodes:
             self._idMap[v.object_id] = v
+        self._bestPath = []
+        self._bestCost = 0
+
+    def getOptPath(self, source, lun):
+        self._bestPath = []
+        self._bestCost = 0
+
+        parziale = [source]  # ho il primo nodo
+
+        # nx.neighbors(self._graph, source) = self._graph.neighbors(source)
+        for n in nx.neighbors(self._graph, source):  # ho il nodo e prendo i suoi vicini
+            if parziale[-0].classification == n.classification:  # stessa classification
+                parziale.append(n)
+                self._ricorsione(parziale, lun)
+                parziale.pop()
+
+        return self._bestPath, self._bestCost
+
+    def _ricorsione(self, parziale, lun):
+        # condizione di uscita
+        if len(parziale) == lun:
+            # allora parziale ha la lunghezza desiderata
+            # verifico se è una soluzione migliore e in ogni caso esco
+            if self.costo(parziale) > self._bestCost:
+                self._bestCost = self.costo(parziale)
+                self._bestPath = copy.deepcopy(parziale)  # deepcopy perché la lista contiene oggetti
+            return
+
+        # se arrivo qui, allora parziale può ancora ammettere altri nodi
+        for n in self._graph.neighbors(parziale[-1]):  # nodi connessi all'ultimo
+            if parziale[-0].classification == n.classification and n not in parziale:  # stessa classification
+                parziale.append(n)
+                self._ricorsione(parziale, lun)
+                parziale.pop()
+
+    def costo(self, listObjects):
+        totCosto = 0
+        for i in range(0, len(listObjects) - 1):  # -1 perché ciclo su archi
+            totCosto += self._graph[listObjects[i]][listObjects[i + 1]]["weight"]
+        return totCosto
 
     def buildGraph(self):
         self._graph.add_nodes_from(self._nodes)
